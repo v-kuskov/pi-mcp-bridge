@@ -127,7 +127,7 @@ export default function mcpBridge(pi: ExtensionAPI) {
     const uiResourceHandler = new UiResourceHandler(manager);
     let uiServer: UiServerHandle | null = null;
     try {
-      uiServer = startUiServer({ manager, consentManager });
+      uiServer = await startUiServer({ manager, consentManager });
     } catch (error) {
       logger.warn(
         `UI server did not start (UI integration disabled): ${error instanceof Error ? error.message : String(error)}`,

@@ -19,10 +19,11 @@ import { randomBytes } from "node:crypto";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import type { McpBridgeState } from "./state.ts";
 import type { UiStreamMode } from "./types.ts";
+import type { UiSessionHandle } from "./ui-server.ts";
 import { buildHostHtmlTemplate } from "./host-html-template.ts";
 import { isGlimpseAvailable, openGlimpseWindow } from "./glimpse-ui.ts";
 import { logger } from "./logger.ts";
-import { extractUiPromptText, type UiSessionMessages } from "./types.ts";
+import { extractUiPromptText, type UiMessageParams, type UiSessionMessages } from "./types.ts";
 
 export interface UiSessionRuntime {
   /** Whether this session reused an already-open UI window. */
@@ -45,6 +46,8 @@ interface ActiveSession {
   startedAt: Date;
   closeWindow: () => void;
   pushResult: (result: CallToolResult) => void;
+  /** Guard against double-finalize (e.g. Done then window close). */
+  finalized: boolean;
 }
 
 export async function maybeStartUiSession(
@@ -99,7 +102,9 @@ export async function maybeStartUiSession(
     cacheToolConsent: cacheConsent,
   });
 
-  // Register the session.
+  // Register the session with the local UI server. This serves `/s/<token>`,
+  // receives the iframe's `/proxy/*` callbacks, and streams pushed results
+  // to the host page over SSE.
   const messages: UiSessionMessages = { prompts: [], notifications: [], intents: [] };
   const session: ActiveSession = {
     token,
@@ -109,7 +114,32 @@ export async function maybeStartUiSession(
     startedAt: new Date(),
     closeWindow: () => {},
     pushResult: () => {},
+    finalized: false,
   };
+
+  let sessionHandle: UiSessionHandle | null = null;
+  try {
+    sessionHandle = state.uiServer.registerSession({
+      token,
+      serverName: params.serverName,
+      toolName: params.toolName,
+      toolArgs: params.toolArgs,
+      html,
+      onMessage: (msg) => forwardUiMessage(state, msg),
+      onDone: () =>
+        finalizeSession(state, session, "done", sessionHandle?.getMessages() ?? session.messages),
+      onCancel: () =>
+        finalizeSession(state, session, "cancelled", sessionHandle?.getMessages() ?? session.messages),
+    });
+  } catch (error) {
+    logger.warn(
+      `Failed to register UI session: ${error instanceof Error ? error.message : String(error)}`,
+    );
+    return null;
+  }
+
+  session.closeWindow = () => sessionHandle!.close();
+  session.pushResult = (result) => sessionHandle!.pushResult(result);
 
   // Open the URL.
   const url = `${state.uiServer.baseUrl}/s/${token}`;
@@ -118,8 +148,9 @@ export async function maybeStartUiSession(
   if (useGlimpse) {
     try {
       const win = await openGlimpseWindow(html, {
-        title: `MCP UI — ${params.serverName} / params.toolName`,
-        onClosed: () => finalizeSession(state, session, "closed"),
+        title: `MCP UI — ${params.serverName} / ${params.toolName}`,
+        onClosed: () =>
+          finalizeSession(state, session, "closed", sessionHandle?.getMessages() ?? session.messages),
       });
       session.closeWindow = () => win.close();
     } catch (error) {
@@ -133,11 +164,10 @@ export async function maybeStartUiSession(
   return {
     reused: false,
     sendToolResult: (result) => session.pushResult(result),
-    sendToolCancelled: (reason) =>
-      session.pushResult({ isError: true, content: [{ type: "text", text: reason }] }),
+    sendToolCancelled: (reason) => sessionHandle!.pushCancelled(reason),
     close: () => {
       session.closeWindow();
-      finalizeSession(state, session, "closed");
+      finalizeSession(state, session, "closed", sessionHandle?.getMessages() ?? session.messages);
     },
     requestMeta: undefined,
   };
@@ -155,12 +185,47 @@ function findActiveSession(
   return null;
 }
 
-function finalizeSession(state: McpBridgeState, session: ActiveSession, reason: string): void {
+function finalizeSession(
+  state: McpBridgeState,
+  session: ActiveSession,
+  reason: string,
+  messages?: UiSessionMessages,
+): void {
+  if (session.finalized) return;
+  session.finalized = true;
   state.completedUiSessions.push({
     serverName: session.serverName,
     toolName: session.toolName,
     completedAt: new Date(),
     reason,
-    messages: session.messages,
+    messages: messages ?? session.messages,
   });
+}
+
+function forwardUiMessage(
+  state: McpBridgeState,
+  msg: Record<string, unknown>,
+): void {
+  // Prompts/intents/notifications from the iframe are forwarded to the host
+  // session when a message channel is available. Messages are also
+  // accumulated by the UI server and surface via `completedUiSessions`.
+  if (!state.sendMessage) return;
+  const type = msg?.type;
+  if (type === "prompt") {
+    const text = extractUiPromptText(msg as UiMessageParams);
+    if (text) {
+      state.sendMessage(
+        { customType: "mcp_ui_prompt", content: [{ type: "text", text }] },
+        { triggerTurn: true },
+      );
+    }
+  } else if (type === "intent") {
+    const text = `[intent] ${String(msg.intent ?? "unknown")}${
+      msg.params ? ` ${JSON.stringify(msg.params)}` : ""
+    }`;
+    state.sendMessage({ customType: "mcp_ui_intent", content: [{ type: "text", text }] });
+  } else if (type === "notify" || type === "notification") {
+    const text = typeof msg.message === "string" ? msg.message : JSON.stringify(msg);
+    state.sendMessage({ customType: "mcp_ui_notification", content: [{ type: "text", text }] });
+  }
 }

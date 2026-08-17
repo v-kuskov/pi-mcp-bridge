@@ -1,6 +1,6 @@
 {
   "name": "@qianhuan-lxs/pi-mcp-bridge",
-  "version": "0.5.6",
+  "version": "0.5.7",
   "description": "Pi Agent extension that bridges MCP servers to the LLM via two dynamic-context tools (CallMcpTool + FetchMcpResource). Filesystem-is-everything: each MCP server is described by meta.json + tools/*.json, loaded into context on session start.",
   "type": "module",
   "license": "MIT",

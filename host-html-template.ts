@@ -120,6 +120,39 @@ export function buildHostHtmlTemplate(input: HostHtmlTemplateInput): string {
 
     let consentGranted = !REQUIRE_TOOL_CONSENT;
 
+    // Receive tool results / cancellation pushed from the local UI server
+    // over Server-Sent Events, and forward them into the iframe via the
+    // AppBridge instance.
+    let eventSource = null;
+    const openEventSource = () => {
+      eventSource = new EventSource("/events?session=" + SESSION_TOKEN);
+      eventSource.addEventListener("tool-result", (event) => {
+        try {
+          const payload = JSON.parse(event.data);
+          const result = payload && payload.result !== undefined ? payload.result : payload;
+          bridge.sendToolResult(result);
+          setStatus("Result received");
+        } catch {}
+      });
+      eventSource.addEventListener("tool-cancelled", (event) => {
+        try {
+          const payload = JSON.parse(event.data);
+          bridge.sendToolCancelled(payload && payload.reason ? payload.reason : "Cancelled");
+        } catch {}
+      });
+      eventSource.onerror = () => {
+        // The server ends the stream when the session closes; stop
+        // reconnecting so the page does not poll forever.
+        closeEventSource();
+      };
+    };
+    const closeEventSource = () => {
+      if (eventSource) {
+        eventSource.close();
+        eventSource = null;
+      }
+    };
+
     const bridge = new AppBridge(
       null,
       { name: "pi-mcp-bridge", version: "1.0.0" },
@@ -177,13 +210,16 @@ export function buildHostHtmlTemplate(input: HostHtmlTemplateInput): string {
       setStatus("UI ready");
       const transport = new PostMessageTransport({ iframeWindow: iframe.contentWindow });
       bridge.attach(transport);
+      openEventSource();
     });
 
     const sendDone = async () => {
+      closeEventSource();
       try { await post("/proxy/ui/done", {}); } catch {}
       window.close();
     };
     const sendCancel = async () => {
+      closeEventSource();
       try { await post("/proxy/ui/cancel", {}); } catch {}
       window.close();
     };

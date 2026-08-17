@@ -54,13 +54,13 @@ async function main(): Promise<void> {
         console.error("Usage: sync <server> [--force] -- <command> [args...]");
         process.exit(2);
       }
-      const dashIdx = args.positionals.indexOf("--");
-      let command: string | undefined;
-      let commandArgs: string[] = [];
-      if (dashIdx >= 0 && dashIdx < args.positionals.length - 1) {
-        command = args.positionals[dashIdx + 1];
-        commandArgs = args.positionals.slice(dashIdx + 2);
-      }
+      // node:util parseArgs treats `--` as an option terminator and drops it
+      // from positionals, so the command is simply everything after the
+      // server name (`sync <server> [--force] -- <command> [args...]`).
+      // When omitted, sync uses the transport recorded in meta.json.
+      const rest = args.positionals.slice(2);
+      const command = rest[0];
+      const commandArgs = rest.slice(1);
       // command is optional — HTTP servers added via --url sync without it.
       const result = await doSync(serverName, command, commandArgs, { force: args.values.force });
       if (!result.ok) {
@@ -93,14 +93,16 @@ async function main(): Promise<void> {
         console.error("Usage: add <name> -- <command> | --url <url>");
         process.exit(2);
       }
-      const dashIdx = args.positionals.indexOf("--");
-      const hasCommand = dashIdx >= 0 && dashIdx < args.positionals.length - 1;
+      // See `sync`: parseArgs drops the `--` terminator, so the command is
+      // everything after the server name.
+      const rest = args.positionals.slice(2);
+      const hasCommand = rest.length > 0;
       if (!hasCommand && !args.values.url) {
         console.error("add requires either --url or a command after `--`");
         process.exit(2);
       }
-      const command = hasCommand ? args.positionals[dashIdx + 1] : undefined;
-      const commandArgs = hasCommand ? args.positionals.slice(dashIdx + 2) : [];
+      const command = hasCommand ? rest[0] : undefined;
+      const commandArgs = hasCommand ? rest.slice(1) : [];
       const result = doAdd(name, {
         command,
         args: commandArgs,

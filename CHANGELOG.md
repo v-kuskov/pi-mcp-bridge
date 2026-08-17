@@ -4,6 +4,27 @@ All notable changes to `pi-mcp-bridge` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.7] — 2026-08-18
+
+### Fixed — UI integration: server crash, dead sessions, no result delivery
+
+UI-hosted tools were completely broken: `startUiServer` read `server.address()` synchronously right after the asynchronous `listen()`, so it threw `Cannot read properties of null (reading 'port')` on every startup and the UI server never started. The session plumbing behind it was also unfinished:
+
+- `startUiServer` now awaits the `listening` event before reading the port (startup crash fixed).
+- New `registerSession` API on the server handle: sessions are actually registered, so `/s/<token>` serves the host page instead of 404ing and `/proxy/*` callbacks find their session.
+- New `GET /events?session=<token>` Server-Sent Events stream: `pushResult` / `pushCancelled` (from `ui-session.ts`) now reach the open UI; the host page forwards them into the iframe via `AppBridge.sendToolResult` / `sendToolCancelled`.
+- `/proxy/ui/message` accumulates prompts/notifications/intents into the session (surfaced via `completedUiSessions`); `/proxy/ui/done` and `/proxy/ui/cancel` invoke the session callbacks and tear the session down.
+- Glimpse window title interpolation fixed (`${params.toolName}` was missing its braces).
+- Session finalization is guarded against double-completion (e.g. Done then window close).
+
+### Fixed — CLI `--` separator
+
+`node:util parseArgs` drops the `--` token from `positionals`, so `cli.ts` never found the command after it: `sync <server> -- <command>` and `add <name> -- <command>` always failed with "no command provided". The command is now taken from everything after the server name, so the documented forms work again.
+
+### Tests
+
+- Added `__tests__/ui-server.test.ts` covering async startup, session page serving, SSE result streaming, message accumulation, and done/cancel teardown.
+
 ## [0.5.6] — 2026-07-19
 
 ### Added — show tokens saved vs full-schema baseline
