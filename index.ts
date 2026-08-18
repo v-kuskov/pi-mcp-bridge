@@ -20,8 +20,6 @@ import { renderWrapperToolCall, renderMcpToolResult } from "./tool-result-render
 import { McpServerManager } from "./server-manager.ts";
 import { McpLifecycleManager } from "./lifecycle.ts";
 import { ConsentManager } from "./consent-manager.ts";
-import { UiResourceHandler } from "./ui-resource-handler.ts";
-import { startUiServer, type UiServerHandle } from "./ui-server.ts";
 import { toolErrorOverride } from "./error-signal.ts";
 import { logger } from "./logger.ts";
 import { doSync, doValidate, doAdd, doList, doRemove } from "./registry-commands.ts";
@@ -55,8 +53,6 @@ function buildToolMetadata(registry: Registry): Map<string, ToolMetadata[]> {
         originalName: def.name,
         description: def.description,
         inputSchema: def.inputSchema,
-        uiResourceUri: def.ui?.resourceUri ?? undefined,
-        uiStreamMode: def.ui?.streamMode ?? undefined,
       });
     }
     toolMetadata.set(server.name, metadata);
@@ -86,9 +82,6 @@ export default function mcpBridge(pi: ExtensionAPI) {
 
   async function shutdownState(current: McpBridgeState | null, reason: string): Promise<void> {
     if (!current) return;
-    if (current.uiServer) {
-      current.uiServer.close(reason);
-    }
     try {
       await current.lifecycle.gracefulShutdown();
     } catch (error) {
@@ -124,15 +117,6 @@ export default function mcpBridge(pi: ExtensionAPI) {
     registerLifecycleServers(lifecycle, registry);
 
     const consentManager = new ConsentManager("once-per-server");
-    const uiResourceHandler = new UiResourceHandler(manager);
-    let uiServer: UiServerHandle | null = null;
-    try {
-      uiServer = await startUiServer({ manager, consentManager });
-    } catch (error) {
-      logger.warn(
-        `UI server did not start (UI integration disabled): ${error instanceof Error ? error.message : String(error)}`,
-      );
-    }
 
     const nextState: McpBridgeState = {
       manager,
@@ -143,14 +127,7 @@ export default function mcpBridge(pi: ExtensionAPI) {
       contextStats: null,
       settings,
       failureTracker: new Map(),
-      uiResourceHandler,
       consentManager,
-      uiServer,
-      completedUiSessions: [],
-      openBrowser: async (url: string) => {
-        const open = (await import("open")).default;
-        await open(url);
-      },
       ui: ctx.ui,
     };
 

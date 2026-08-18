@@ -50,11 +50,6 @@ export interface RegistryCapabilities {
   elicitation?: boolean;
 }
 
-/** UI configuration for `meta.json`. */
-export interface RegistryUi {
-  viewer?: "auto" | "glimpse" | "browser";
-}
-
 /** Schema for `registry/<server>/meta.json`. */
 export interface ServerMeta {
   $schema?: string;
@@ -74,7 +69,6 @@ export interface ServerMeta {
   capabilities?: RegistryCapabilities;
   exposeResources?: boolean;
   excludeTools?: string[];
-  ui?: RegistryUi;
   syncedAt?: string;
   syncedFrom?: "live-server" | "manual";
 }
@@ -85,12 +79,6 @@ export interface ToolAnnotations {
   destructiveHint?: boolean;
   idempotentHint?: boolean;
   openWorldHint?: boolean;
-}
-
-/** UI metadata for `tools/<tool>.json`. */
-export interface ToolUi {
-  resourceUri?: string | null;
-  streamMode?: "eager" | "stream-first" | null;
 }
 
 /** Schema for `registry/<server>/tools/<tool-key>.json`. */
@@ -105,7 +93,6 @@ export interface ToolDefinition {
   /** JSON Schema for the tool's output (informational). */
   outputSchema?: unknown;
   annotations?: ToolAnnotations;
-  ui?: ToolUi;
   _meta?: Record<string, unknown>;
 }
 

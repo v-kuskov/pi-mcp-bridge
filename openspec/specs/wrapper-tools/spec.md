@@ -96,16 +96,12 @@ When the `AbortSignal` aborts:
 - The tool MUST return `details.error = "aborted"` (not throw).
 - The server connection MUST remain usable for subsequent calls.
 
-#### REQ-W-008: UI resource hooks (Phase 1)
+#### REQ-W-008: UI resource hooks
 
-If the tool's registry descriptor (`tools/<toolName>.json`) declares a
-`uiResourceUri`:
-- The bridge MUST start (or reuse) a UI session before forwarding the
-  call.
-- The bridge MUST forward the `CallToolResult` to the UI session.
-- The bridge MUST include a UI-open notice in the returned content.
-- The full UI session contract lives in `openspec/specs/mcp-bridge/spec.md`
-  Phase 1 scope and the (future) `phase-1-ui` change.
+*Removed in v0.6.0* — the MCP UI machinery (ui-server, ui-session,
+ui-resource-handler, host-html-template, glimpse-ui, app-bridge) was cut.
+Tools declaring `uiResourceUri` in their descriptors are no longer
+rendered; the field is ignored by the bridge.
 
 ### Scenarios
 

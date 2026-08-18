@@ -38,14 +38,7 @@ pi-mcp-bridge/
 ├── context-injector.ts      # build + inject registry index into system prompt
 ├── call-mcp-tool.ts         # CallMcpTool wrapper
 ├── fetch-mcp-resource.ts    # FetchMcpResource wrapper
-├── consent-manager.ts       # per-server tool consent gate (UI)
-├── glimpse-ui.ts            # optional native macOS window viewer
-├── ui-resource-handler.ts   # fetch + validate ui:// resources
-├── host-html-template.ts    # sandboxed iframe host page
-├── ui-server.ts             # local HTTP server (sessions + proxy)
-├── ui-session.ts            # per-tool UI session lifecycle
-├── ui-stream-types.ts        # bidirectional UI stream envelopes
-├── app-bridge.bundle.js     # vendored MCP AppBridge (no CDN)
+├── consent-manager.ts       # per-server tool consent gate
 ├── registry/
 │   ├── registry-types.ts    # meta.json / tools/*.json / index.json types
 │   ├── registry-loader.ts  # read registry → in-memory Registry
@@ -75,9 +68,7 @@ session_start
   ├─ ctx.injectSystemContext(block)
   ├─ new McpServerManager()
   ├─ new McpLifecycleManager() (idle timeout + health checks)
-  ├─ new ConsentManager()
-  ├─ new UiResourceHandler(manager)
-  └─ startUiServer() → UiServerHandle
+  └─ new ConsentManager()
 
 [tool call: CallMcpTool]
   ├─ resolveTool(server, toolName) → ToolMeta
@@ -89,7 +80,6 @@ session_start
   └─ return to Pi
 
 session_shutdown
-  ├─ uiServer.close()
   └─ lifecycle.gracefulShutdown() (close all connections)
 ```
 
@@ -127,7 +117,7 @@ Both wrappers accept the `AbortSignal` from Pi and thread it through to `McpServ
 
 ### UI integration
 
-Tools may declare `ui.resourceUri` in their registry descriptor. When `CallMcpTool` targets such a tool, `ui-session.ts` fetches the HTML resource via `ui-resource-handler.ts`, wraps it in a sandboxed iframe (`host-html-template.ts`), serves it from a local HTTP server (`ui-server.ts`), and opens the URL in the browser or a native Glimpse window. The iframe communicates back via `/proxy/*` endpoints, which forward tool calls through `McpServerManager` (gated by `ConsentManager`).
+*Removed in v0.6.0* — the MCP UI machinery (ui-server, ui-session, ui-resource-handler, host-html-template, glimpse-ui, app-bridge) was cut. Tools declaring `ui.resourceUri` in their descriptors are no longer rendered; the field is ignored by the bridge.
 
 ## Behavior contracts
 

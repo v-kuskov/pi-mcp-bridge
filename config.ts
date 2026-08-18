@@ -4,7 +4,7 @@
 // Server definitions live in the filesystem registry
 // (`<agent dir>/mcp-registry/<server>/meta.json`). This module only loads
 // the small `BridgeSettings` document that controls bridge-wide behavior
-// (output guard, context budget, idle timeout, UI viewer).
+// (output guard, context budget, idle timeout).
 
 import { existsSync, readFileSync } from "node:fs";
 import { getAgentPath } from "./agent-dir.ts";
@@ -19,7 +19,6 @@ export const DEFAULT_SETTINGS: BridgeSettings = {
   requestTimeoutMs: 0,
   outputGuard: true,
   contextBudgetTokens: 4000,
-  uiViewer: "auto",
 };
 
 /** Resolve the settings file path (`<agent dir>/mcp-bridge.json` by default). */
@@ -67,7 +66,6 @@ export function loadBridgeSettings(): BridgeSettings {
       parsed.schemaInjectionToolLimit === 0
         ? 0
         : positiveInt(parsed.schemaInjectionToolLimit) ?? undefined,
-    uiViewer: parsed.uiViewer ?? DEFAULT_SETTINGS.uiViewer!,
     requireConsent: parsed.requireConsent === true,
   };
 }

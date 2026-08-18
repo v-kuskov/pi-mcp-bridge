@@ -69,11 +69,7 @@ function makeState(opts: { requireConsent: boolean; approved?: boolean }): McpBr
     contextStats: null,
     settings: { requireConsent: opts.requireConsent } as never,
     failureTracker: new Map(),
-    uiResourceHandler: {} as never,
     consentManager,
-    uiServer: null,
-    completedUiSessions: [],
-    openBrowser: async () => {},
     ui: { notify: () => {} } as never,
   };
 }

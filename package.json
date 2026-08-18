@@ -1,6 +1,6 @@
 {
   "name": "@qianhuan-lxs/pi-mcp-bridge",
-  "version": "0.5.7",
+  "version": "0.6.0",
   "description": "Pi Agent extension that bridges MCP servers to the LLM via two dynamic-context tools (CallMcpTool + FetchMcpResource). Filesystem-is-everything: each MCP server is described by meta.json + tools/*.json, loaded into context on session start.",
   "type": "module",
   "license": "MIT",
@@ -78,13 +78,6 @@
     "mcp-output-guard.ts",
     "tool-registrar.ts",
     "consent-manager.ts",
-    "ui-server.ts",
-    "ui-session.ts",
-    "ui-resource-handler.ts",
-    "ui-stream-types.ts",
-    "host-html-template.ts",
-    "glimpse-ui.ts",
-    "app-bridge.bundle.js",
     "call-mcp-tool.ts",
     "fetch-mcp-resource.ts",
     "registry/registry-loader.ts",
@@ -97,9 +90,7 @@
     "LICENSE"
   ],
   "dependencies": {
-    "@modelcontextprotocol/ext-apps": "^1.2.2",
     "@modelcontextprotocol/sdk": "^1.25.1",
-    "open": "^10.2.0",
     "zod": "^3.25.0 || ^4.0.0"
   },
   "peerDependencies": {
@@ -115,7 +106,6 @@
     "@earendil-works/pi-tui": "^0.74.0",
     "@types/bun": "^1.0.0",
     "@types/node": "^20.0.0",
-    "@types/open": "^6.2.1",
     "tsx": "^4.21.0",
     "typebox": "^1.1.24",
     "typescript": "^5.0.0",

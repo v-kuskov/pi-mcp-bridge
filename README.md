@@ -356,7 +356,6 @@ Tool schemas stay in `registry/<server>/tools/*.json` (sync product) — edit th
   "contextBudgetTokens": 4000,       // max tokens for the injected system-prompt block
   "schemaInjectionToolLimit": 10,    // registries with > N tools skip inline schemas
                                      // 0 = disable inline schemas entirely
-  "uiViewer": "auto",                // "auto" | "browser" | "glimpse"
   "requireConsent": false            // gate CallMcpTool behind /mcp-bridge approve (default false)
 }
 ```

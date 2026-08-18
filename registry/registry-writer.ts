@@ -26,8 +26,6 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { logger } from "../logger.ts";
 import { getRegistryRoot } from "../agent-dir.ts";
 import { slugifyToolName } from "../resource-tools.ts";
-import { getToolUiResourceUri } from "@modelcontextprotocol/ext-apps/app-bridge";
-import { extractToolUiStreamMode } from "../utils.ts";
 import {
   loadRegistry,
   parseServerMeta,
@@ -124,10 +122,6 @@ export async function syncServer(
       description: tool.description ?? "(no description)",
       inputSchema: tool.inputSchema ?? { type: "object", properties: {} },
       annotations: extractAnnotations(tool),
-      ui: {
-        resourceUri: tryGetToolUiResourceUri(tool) ?? null,
-        streamMode: extractToolUiStreamMode(tool._meta) ?? null,
-      },
       _meta: tool._meta,
     };
     const path = join(toolsDir, `${key}.json`);
@@ -317,14 +311,6 @@ function extractAnnotations(tool: import("../types.ts").McpTool): ToolDefinition
   const annotations = (meta as Record<string, unknown>).annotations;
   if (!annotations || typeof annotations !== "object") return undefined;
   return annotations as ToolDefinition["annotations"];
-}
-
-function tryGetToolUiResourceUri(tool: import("../types.ts").McpTool): string | undefined {
-  try {
-    return getToolUiResourceUri({ _meta: tool._meta });
-  } catch {
-    return undefined;
-  }
 }
 
 function atomicWriteJson(path: string, value: unknown): void {

@@ -1,8 +1,7 @@
 // consent-manager.ts - Per-server tool consent gate.
 //
-// Ported verbatim from pi-mcp-adapter. Used by the UI session to gate
-// whether a UI launched by an MCP tool may call other MCP tools on the
-// same server.
+// Ported verbatim from pi-mcp-adapter. Gates whether the agent may call
+// MCP tools on a server for the current session.
 
 import { ConsentError } from "./errors.ts";
 import { logger } from "./logger.ts";

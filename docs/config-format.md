@@ -74,9 +74,6 @@ JSON Schema: [`registry/schemas/meta.v1.json`](../registry/schemas/meta.v1.json)
   },
   "exposeResources": true,                    // optional, default true
   "excludeTools": ["internal_debug"],         // optional, hide tools from the registry
-  "ui": {                                     // optional
-    "viewer": "auto"                          //   "auto" | "glimpse" | "browser"
-  },
   "syncedAt": "2026-07-19T05:24:00.000Z",     // set by `sync`
   "syncedFrom": "live-server"                 // "live-server" | "manual"
 }
@@ -109,9 +106,6 @@ JSON Schema: [`registry/schemas/tool.v1.json`](../registry/schemas/tool.v1.json)
   "annotations": {                            // optional, MCP tool annotations
     "title": "Read file",
     "readOnlyHint": true
-  },
-  "ui": {                                     // optional, MCP UI integration
-    "resourceUri": "ui://filesystem/read-file"
   }
 }
 ```
@@ -194,5 +188,3 @@ Anything in `registry.local/` (sibling of `registry/`) overrides the same path i
 | `PI_MCP_BRIDGE_REGISTRY_ROOT` | Override the registry root. |
 | `PI_MCP_BRIDGE_SETTINGS_PATH` | Override the settings file path. |
 | `PI_AGENT_DIR` | Override the Pi agent directory (default `~/.pi/agent`). |
-| `MCP_UI_VIEWER` | `auto` \| `browser` \| `glimpse` — override the UI viewer. |
-| `GLIMPSE_BINARY` | Path to the Glimpse binary (optional). |

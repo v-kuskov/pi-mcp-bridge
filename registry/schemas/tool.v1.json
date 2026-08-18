@@ -28,14 +28,6 @@
       },
       "additionalProperties": false
     },
-    "ui": {
-      "type": "object",
-      "properties": {
-        "resourceUri": { "type": ["string", "null"] },
-        "streamMode": { "enum": ["eager", "stream-first"], "type": ["string", "null"] }
-      },
-      "additionalProperties": false
-    },
     "_meta": { "type": "object" }
   }
 }

@@ -4,11 +4,9 @@
 // original MCP tool name for a given registry key, format schemas for
 // error messages, and list available tools.
 
-import { getToolUiResourceUri } from "@modelcontextprotocol/ext-apps/app-bridge";
 import type { McpTool, McpResource, ServerEntry, ToolMetadata } from "./types.ts";
 import { formatToolName, isToolExcluded } from "./types.ts";
 import { resourceNameToToolName } from "./resource-tools.ts";
-import { extractToolUiStreamMode } from "./utils.ts";
 
 /** Build the in-memory `ToolMetadata[]` for a server from live MCP discovery. */
 export function buildToolMetadata(
@@ -28,19 +26,11 @@ export function buildToolMetadata(
     }
     if (isToolExcluded(tool.name, serverName, prefix, definition.excludeTools)) continue;
 
-    let uiResourceUri: string | undefined;
-    try {
-      uiResourceUri = getToolUiResourceUri({ _meta: tool._meta });
-    } catch {
-      failedTools.push(tool.name);
-    }
     metadata.push({
       name: formatToolName(tool.name, serverName, prefix),
       originalName: tool.name,
       description: tool.description ?? "",
       inputSchema: tool.inputSchema,
-      uiResourceUri,
-      uiStreamMode: extractToolUiStreamMode(tool._meta),
     });
   }
 

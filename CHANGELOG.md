@@ -4,6 +4,25 @@ All notable changes to `pi-mcp-bridge` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] — 2026-08-18
+
+### Removed — MCP UI machinery (ui-server / ui-session / ui-resource-handler / ui-stream-types / host-html-template / glimpse-ui / app-bridge)
+
+The entire UI integration layer was cut:
+
+- Deleted `ui-server.ts`, `ui-session.ts`, `ui-resource-handler.ts`,
+  `ui-stream-types.ts`, `host-html-template.ts`, `glimpse-ui.ts`,
+  `app-bridge.bundle.js`, and `__tests__/ui-server.test.ts`.
+- `CallMcpTool` no longer starts UI sessions for tools declaring
+  `ui.resourceUri`; the field is ignored.
+- The bridge no longer boots a localhost HTTP server on `session_start`
+  (previously it listened unconditionally and only served sessions when a
+  UI-enabled tool was called).
+- `uiViewer` setting, `MCP_UI_VIEWER` / `GLIMPSE_BINARY` env vars, and the
+  `ui` blocks in `meta.json` / `tools/*.json` descriptors + schemas are gone.
+- Dropped dependencies: `@modelcontextprotocol/ext-apps`, `open`.
+- `ConsentManager` (`requireConsent` gate) is unaffected and stays.
+
 ## [0.5.7] — 2026-08-18
 
 ### Fixed — UI integration: server crash, dead sessions, no result delivery

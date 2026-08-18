@@ -76,19 +76,6 @@ export function normalizeDirectToolInputSchema(schema: unknown): Record<string, 
   return normalized;
 }
 
-/** Extract the adapter-owned UI stream mode from tool metadata. */
-export function extractToolUiStreamMode(
-  toolMeta: Record<string, unknown> | undefined,
-): "eager" | "stream-first" | undefined {
-  const uiMeta = toolMeta?.ui;
-  if (!uiMeta || typeof uiMeta !== "object") return undefined;
-  const streamMode = (uiMeta as Record<string, unknown>)["pi-mcp-bridge.streamMode"];
-  if (streamMode === "eager" || streamMode === "stream-first") {
-    return streamMode;
-  }
-  return undefined;
-}
-
 /** Run async `fn` over `items` with at most `limit` workers in flight. */
 export async function parallelLimit<T, R>(
   items: T[],

@@ -25,9 +25,6 @@
   },
   "exposeResources": true,
   "excludeTools": [],
-  "ui": {
-    "viewer": "auto"
-  },
   "syncedAt": "2026-07-19T05:24:00.000Z",
   "syncedFrom": "manual"
 }

@@ -354,7 +354,6 @@ npx tsx ./node_modules/@qianhuan-lxs/pi-mcp-bridge/cli.ts <sync|add|validate|lis
   "contextBudgetTokens": 4000,       // 注入系统提示块的最大 token 数
   "schemaInjectionToolLimit": 10,    // 工具数 > N 的注册表跳过内联 schema
                                      // 0 = 完全禁用内联 schema
-  "uiViewer": "auto",                // "auto" | "browser" | "glimpse"
   "requireConsent": false            // 在 CallMcpTool 前加 /mcp-bridge approve 闸门（默认 false）
 }
 ```

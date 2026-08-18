@@ -83,7 +83,6 @@
 | `capabilities`                 | object   | no       | What the server claims to support. Used to skip pointless probes. |
 | `exposeResources`               | boolean  | no       | If true (default), resources are exposed as `FetchMcpResource` targets. |
 | `excludeTools`                 | string[] | no       | Tool names to hide from the registry index. |
-| `ui.viewer`                    | enum     | no       | `"auto"`, `"glimpse"`, `"browser"`. Default `auto`. |
 | `syncedAt`                     | string   | no       | ISO timestamp of the last `sync` from a live server. |
 | `syncedFrom`                   | string   | no       | `"live-server"` or `"manual"`. |
 
@@ -109,10 +108,6 @@
     "idempotentHint": true,
     "openWorldHint": false
   },
-  "ui": {
-    "resourceUri": null,
-    "streamMode": null
-  },
   "_meta": {}
 }
 ```
@@ -132,8 +127,6 @@ filename is a slug and `name` is the canonical identifier.
 | `inputSchema`   | object  | yes      | JSON Schema for the tool's arguments. The model reads this to know how to fill `CallMcpTool.arguments`. |
 | `outputSchema`  | object  | no       | JSON Schema for the tool's output (informational). |
 | `annotations`   | object  | no       | MCP standard tool annotations (`readOnlyHint`, etc.). |
-| `ui.resourceUri`| string  | no       | If set, the tool opens a UI resource on call. |
-| `ui.streamMode` | enum    | no       | `"eager"` or `"stream-first"`. |
 | `_meta`         | object  | no       | Pass-through metadata from the MCP server. |
 
 ## `index.json` (generated)

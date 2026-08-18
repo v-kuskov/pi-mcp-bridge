@@ -74,9 +74,6 @@ JSON Schema：[`registry/schemas/meta.v1.json`](../registry/schemas/meta.v1.json
   },
   "exposeResources": true,                    // 可选，默认 true
   "excludeTools": ["internal_debug"],         // 可选，从注册表里隐藏工具
-  "ui": {                                     // 可选
-    "viewer": "auto"                          //   "auto" | "glimpse" | "browser"
-  },
   "syncedAt": "2026-07-19T05:24:00.000Z",     // 由 `sync` 写入
   "syncedFrom": "live-server"                 // "live-server" | "manual"
 }
@@ -109,9 +106,6 @@ JSON Schema：[`registry/schemas/tool.v1.json`](../registry/schemas/tool.v1.json
   "annotations": {                            // 可选，MCP 工具注解
     "title": "Read file",
     "readOnlyHint": true
-  },
-  "ui": {                                     // 可选，MCP UI 集成
-    "resourceUri": "ui://filesystem/read-file"
   }
 }
 ```
@@ -194,5 +188,3 @@ npx pi-mcp-bridge add <server> [--env K=V]... -- <command> [args...]
 | `PI_MCP_BRIDGE_REGISTRY_ROOT` | 覆盖注册表根。 |
 | `PI_MCP_BRIDGE_SETTINGS_PATH` | 覆盖 settings 文件路径。 |
 | `PI_AGENT_DIR` | 覆盖 Pi agent 目录（默认 `~/.pi/agent`）。 |
-| `MCP_UI_VIEWER` | `auto` \| `browser` \| `glimpse` —— 覆盖 UI 查看器。 |
-| `GLIMPSE_BINARY` | Glimpse 二进制路径（可选）。 |

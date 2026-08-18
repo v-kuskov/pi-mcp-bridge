@@ -35,9 +35,5 @@
     "idempotentHint": true,
     "openWorldHint": false
   },
-  "ui": {
-    "resourceUri": null,
-    "streamMode": null
-  },
   "_meta": {}
 }

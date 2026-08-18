@@ -52,11 +52,7 @@ function makeState(servers: { name: string; tools: string[] }[]): McpBridgeState
     contextStats: null,
     settings: { contextBudgetTokens: 4000 } as never,
     failureTracker: new Map(),
-    uiResourceHandler: {} as never,
     consentManager: {} as never,
-    uiServer: null,
-    completedUiSessions: [],
-    openBrowser: async () => {},
   };
 }
 

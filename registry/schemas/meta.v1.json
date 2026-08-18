@@ -98,13 +98,6 @@
     },
     "exposeResources": { "type": "boolean" },
     "excludeTools": { "type": "array", "items": { "type": "string" } },
-    "ui": {
-      "type": "object",
-      "properties": {
-        "viewer": { "enum": ["auto", "glimpse", "browser"] }
-      },
-      "additionalProperties": false
-    },
     "syncedAt": { "type": "string", "format": "date-time" },
     "syncedFrom": { "enum": ["live-server", "manual"] }
   }

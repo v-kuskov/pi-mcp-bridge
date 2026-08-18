@@ -38,14 +38,7 @@ pi-mcp-bridge/
 ├── context-injector.ts      # 构建 + 注入注册表索引到系统提示
 ├── call-mcp-tool.ts         # CallMcpTool 包装器
 ├── fetch-mcp-resource.ts    # FetchMcpResource 包装器
-├── consent-manager.ts       # 每服务器工具同意门（UI）
-├── glimpse-ui.ts            # 可选的原生 macOS 窗口查看器
-├── ui-resource-handler.ts   # 抓取 + 校验 ui:// 资源
-├── host-html-template.ts    # 沙箱 iframe 宿主页
-├── ui-server.ts             # 本地 HTTP 服务器（会话 + 代理）
-├── ui-session.ts            # 每工具 UI 会话生命周期
-├── ui-stream-types.ts        # 双向 UI 流信封
-├── app-bridge.bundle.js     # 内嵌的 MCP AppBridge（不走 CDN）
+├── consent-manager.ts       # 每服务器工具同意门
 ├── registry/
 │   ├── registry-types.ts    # meta.json / tools/*.json / index.json 类型
 │   ├── registry-loader.ts  # 读注册表 → 内存中的 Registry
@@ -75,9 +68,7 @@ session_start
   ├─ ctx.injectSystemContext(block)
   ├─ new McpServerManager()
   ├─ new McpLifecycleManager()（空闲超时 + 健康检查）
-  ├─ new ConsentManager()
-  ├─ new UiResourceHandler(manager)
-  └─ startUiServer() → UiServerHandle
+  └─ new ConsentManager()
 
 [工具调用：CallMcpTool]
   ├─ resolveTool(server, toolName) → ToolMeta
@@ -89,7 +80,6 @@ session_start
   └─ 返回给 Pi
 
 session_shutdown
-  ├─ uiServer.close()
   └─ lifecycle.gracefulShutdown()（关闭所有连接）
 ```
 
@@ -127,7 +117,7 @@ MCP 工具可能返回任意大的输出（文件内容、搜索结果、日志�
 
 ### UI 集成
 
-工具可以在注册表描述里声明 `ui.resourceUri`。`CallMcpTool` 命中这种工具时，`ui-session.ts` 通过 `ui-resource-handler.ts` 抓取 HTML 资源，用 `host-html-template.ts` 包进沙箱 iframe，从本地 HTTP 服务器（`ui-server.ts`）serve 出来，再用浏览器或原生 Glimpse 窗口打开 URL。iframe 通过 `/proxy/*` 端点回传，由 `McpServerManager` 转发工具调用（经 `ConsentManager` 把关）。
+*已在 v0.6.0 移除* —— MCP UI 机制（ui-server、ui-session、ui-resource-handler、host-html-template、glimpse-ui、app-bridge）已被裁剪。在描述符里声明 `ui.resourceUri` 的工具不再被渲染；该字段会被桥接器忽略。
 
 ## 行为契约
 

@@ -25,9 +25,6 @@
   output guard; `details.mode = "call"`.
 - **ADDED REQ-W-007: Abort handling** — cancel in-flight call; return
   `details.error = "aborted"`; keep connection usable.
-- **ADDED REQ-W-008: UI resource hooks** — if `tools/<toolName>.json`
-  declares `ui.resourceUri`, start/reuse a UI session, forward result
-  to UI, include UI-open notice in content.
 
 ## ADDED Requirements — `FetchMcpResource`
 
