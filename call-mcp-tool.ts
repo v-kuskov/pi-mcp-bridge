@@ -23,6 +23,13 @@ import { metaToServerEntry } from "./registry/registry-types.ts";
 import { buildToolMetadata, findToolByName, formatSchema, getToolNames } from "./tool-metadata.ts";
 import { resolveMcpResultContent, transformMcpContent } from "./tool-registrar.ts";
 import { guardMcpOutput, guardedMcpDetails, resolveMcpOutputGuardOptions } from "./mcp-output-guard.ts";
+import {
+  authRequiredFailure,
+  connectFailure,
+  formatToolFailure,
+  notFoundResult,
+  serverNotFoundFailure,
+} from "./errors.ts";
 import { logger } from "./logger.ts";
 import { throwIfAborted } from "./abort.ts";
 
@@ -45,16 +52,30 @@ export async function executeCallMcpTool(
   // --- Server resolution (REQ-W-002) -------------------------------------
   const server = state.registry.servers.get(params.server);
   if (!server) {
-    return notFound("server_not_found", `Server "${params.server}" not found.`, listServerNames(state.registry));
+    return notFoundResult(
+      "call",
+      "server_not_found",
+      serverNotFoundFailure("CallMcpTool", params.server),
+      listServerNames(state.registry),
+    );
   }
 
   // --- Tool resolution (REQ-W-003) --------------------------------------
   const match = findToolInRegistry(state.registry, params.server, params.toolName);
   if (!match) {
     const available = listToolKeys(state.registry, params.server);
-    return notFound(
+    return notFoundResult(
+      "call",
       "tool_not_found",
-      `Tool "${params.toolName}" not found on "${params.server}".`,
+      formatToolFailure({
+        action: "CallMcpTool",
+        server: params.server,
+        what: `No tool named "${params.toolName}" is exposed by this server.`,
+        hints:
+          available.length === 0
+            ? ["The server reports no tools — try `/mcp-bridge sync <server>` to refresh."]
+            : undefined,
+      }),
       available,
     );
   }
@@ -62,7 +83,12 @@ export async function executeCallMcpTool(
 
   // --- Consent gate (opt-in via settings.requireConsent) ----------------
   if (state.settings.requireConsent && state.consentManager.requiresPrompt(params.server)) {
-    const hint = `Server "${params.server}" requires user consent before tool calls. Run \`/mcp-bridge approve ${params.server}\` in the Pi prompt to approve it, then retry.`;
+    const hint = formatToolFailure({
+      action: "CallMcpTool",
+      server: params.server,
+      what: "Tool calls for this server require your approval.",
+      hints: [`Run \`/mcp-bridge approve ${params.server}\` in the Pi prompt to approve it, then retry the call.`],
+    });
     state.ui?.notify?.(hint, "warning");
     return {
       content: [{ type: "text", text: hint }],
@@ -78,16 +104,14 @@ export async function executeCallMcpTool(
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       return {
-        content: [
-          { type: "text", text: `Failed to connect to "${params.server}": ${message}` },
-        ],
+        content: [{ type: "text", text: connectFailure("CallMcpTool", params.server, message) }],
         details: { mode: "call", error: "connect_failed", server: params.server, message },
       };
     }
   }
 
   if (connection.status === "needs-auth") {
-    const message = `Server "${params.server}" requires authentication. Phase 1 supports bearer tokens only (set them in registry/${params.server}/meta.json). OAuth is Phase 2.`;
+    const message = authRequiredFailure("CallMcpTool", params.server);
     return {
       content: [{ type: "text", text: message }],
       details: { mode: "call", error: "auth_required", server: params.server, message },
@@ -118,9 +142,18 @@ export async function executeCallMcpTool(
       const schemaText = tool.inputSchema
         ? `\n\nExpected parameters:\n${formatSchema(tool.inputSchema)}`
         : "";
+      const header = formatToolFailure({
+        action: "CallMcpTool",
+        server: params.server,
+        what: "The server reported an error for this call.",
+        hints: [
+          "Check the arguments against the expected parameters (below).",
+          "Run `/mcp-bridge status` to confirm the server is healthy.",
+        ],
+      });
       const guarded = await guardMcpOutput(outputContent, {
         ...outputGuardOptions,
-        prefix: "Error: ",
+        prefix: `${header}\n\n`,
         suffix: schemaText,
         emptyTextFallback: "Tool execution failed",
         rawMcpResult: result,
@@ -159,8 +192,21 @@ export async function executeCallMcpTool(
       ? `\n\nExpected parameters:\n${formatSchema(tool.inputSchema)}`
       : "";
     const guarded = await guardMcpOutput(
-      [{ type: "text" as const, text: message }],
-      { ...outputGuardOptions, prefix: "Failed to call tool: ", suffix: schemaText },
+      [
+        {
+          type: "text" as const,
+          text: formatToolFailure({
+            action: "CallMcpTool",
+            server: params.server,
+            what: message ? `The tool call threw an error: ${message}` : "The tool call threw an error.",
+            hints: [
+              "Run `/mcp-bridge status` to check the server is healthy.",
+              "Retry the call — the bridge reconnects automatically.",
+            ],
+          }),
+        },
+      ],
+      { ...outputGuardOptions, suffix: schemaText },
     );
     return {
       content: guarded.content,
@@ -177,20 +223,12 @@ export async function executeCallMcpTool(
   }
 }
 
-function notFound(error: string, message: string, available: string[]): CallMcpToolResult {
-  const suffix = available.length > 0 ? ` Available: ${available.join(", ")}` : "";
-  return {
-    content: [{ type: "text", text: `${message}${suffix}` }],
-    details: { mode: "call", error, available },
-  };
-}
-
 /**
  * Build a `ToolMetadata` entry for a registry tool, so the rest of the
  * bridge (which expects `ToolMetadata[]`) can use it. This is used when
  * the in-memory `toolMetadata` map is queried by other modules.
  */
-export function registryToolToMetadata(
+function registryToolToMetadata(
   serverName: string,
   toolKey: string,
   tool: import("./registry/registry-types.ts").ToolDefinition,

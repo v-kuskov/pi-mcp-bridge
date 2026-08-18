@@ -1,6 +1,18 @@
 /**
  * Centralized logging for pi-mcp-bridge operations.
  * Provides structured, contextual logs with levels.
+ *
+ * Console format (human-readable, no all-caps prefix):
+ *
+ *   [mcp-bridge] session_start: 2 servers, 5 tools
+ *   [mcp-bridge] warn: context injection truncated to fit the budget
+ *   [mcp-bridge] error: graceful shutdown failed (reason=session_restart): boom
+ *       at <first stack frame>
+ *
+ * The error message rides on the log line (deduped if the message already
+ * mentions it); the first stack frame — the throw site — follows indented.
+ * The full stack prints only in debug mode (`MCP_BRIDGE_DEBUG=1`). Colors
+ * are applied only when the output is a TTY so piped logs stay ANSI-free.
  */
 
 export type LogLevel = "debug" | "info" | "warn" | "error";
@@ -30,12 +42,21 @@ const LEVEL_PRIORITY: Record<LogLevel, number> = {
   error: 3,
 };
 
-const LEVEL_PREFIX: Record<LogLevel, string> = {
-  debug: "[MCP-BRIDGE:DEBUG]",
-  info: "[MCP-BRIDGE]",
-  warn: "[MCP-BRIDGE:WARN]",
-  error: "[MCP-BRIDGE:ERROR]",
+// ANSI styling — applied only when writing to a TTY so piped logs stay ANSI-free.
+const ANSI = { reset: "\x1b[0m", dim: "\x1b[2m", red: "\x1b[31m", yellow: "\x1b[33m", gray: "\x1b[90m" };
+const LEVEL_STYLE: Record<LogLevel, { label: string; color?: string }> = {
+  debug: { label: "debug", color: ANSI.gray },
+  info: { label: "" },
+  warn: { label: "warn", color: ANSI.yellow },
+  error: { label: "error", color: ANSI.red },
 };
+
+const useColorForLevel = (level: LogLevel): boolean =>
+  level === "error" || level === "warn" ? Boolean(process.stderr.isTTY) : Boolean(process.stdout.isTTY);
+
+function paint(text: string, code: string | undefined, color: boolean): string {
+  return color && code ? `${code}${text}${ANSI.reset}` : text;
+}
 
 class Logger {
   private minLevel: LogLevel = "info";
@@ -73,18 +94,22 @@ class Logger {
       timestamp: new Date(),
     };
 
-    const prefix = LEVEL_PREFIX[level];
-    const contextStr = formatContext(entry.context);
-    const fullMessage = contextStr ? `${prefix} ${message} ${contextStr}` : `${prefix} ${message}`;
+    const line = formatLogLine(entry, useColorForLevel(level));
+    const stack = error?.stack
+      ? this.minLevel === "debug"
+        ? formatFullStack(error.stack)
+        : formatFirstFrame(error.stack)
+      : "";
+    const output = `${line}${stack}`;
 
     if (level === "error") {
-      console.error(fullMessage, error ?? "");
+      console.error(output);
     } else if (level === "warn") {
-      console.warn(fullMessage);
+      console.warn(output);
     } else if (level === "debug") {
-      console.debug(fullMessage);
+      console.debug(output);
     } else {
-      console.log(fullMessage);
+      console.log(output);
     }
 
     for (const handler of this.handlers) {
@@ -145,7 +170,7 @@ class ChildLogger {
   }
 }
 
-function formatContext(context?: LogContext): string {
+function formatContext(context?: LogContext, color = false): string {
   if (!context || Object.keys(context).length === 0) return "";
   const parts: string[] = [];
   for (const [key, value] of Object.entries(context)) {
@@ -153,7 +178,43 @@ function formatContext(context?: LogContext): string {
       parts.push(`${key}=${typeof value === "string" ? value : JSON.stringify(value)}`);
     }
   }
-  return parts.length > 0 ? `(${parts.join(", ")})` : "";
+  return parts.length > 0 ? ` ${paint(`(${parts.join(", ")})`, ANSI.dim, color)}` : "";
+}
+
+function formatLogLine(entry: LogEntry, color: boolean): string {
+  const { level, message, context, error } = entry;
+  const style = LEVEL_STYLE[level];
+  const prefix = paint("[mcp-bridge]", ANSI.dim, color);
+  const levelWord = style.label ? `${paint(`${style.label}:`, style.color, color)} ` : "";
+  const contextStr = formatContext(context, color);
+  const errorSuffix = error ? formatErrorSuffix(message, error) : "";
+  return `${prefix} ${levelWord}${message}${contextStr}${errorSuffix}`;
+}
+
+/** Append `: <error message>` unless the log message already mentions it. */
+function formatErrorSuffix(message: string, error: Error): string {
+  const errText = error.message || String(error);
+  if (!errText || message.includes(errText)) return "";
+  return `: ${errText}`;
+}
+
+/** Stack lines minus a leading `Error: message` header, if any. */
+function stackFrames(stack: string): string[] {
+  const lines = stack.split("\n").map(line => line.trim()).filter(Boolean);
+  const hasHeader = lines.length > 0 && /^[A-Za-z][\w.]*Error: /.test(lines[0]!);
+  return hasHeader ? lines.slice(1) : lines;
+}
+
+/** First stack frame (the throw site), indented on its own line. */
+function formatFirstFrame(stack: string): string {
+  const frame = stackFrames(stack).find(line => line.startsWith("at "));
+  return frame ? `\n    ${frame}` : "";
+}
+
+/** Full stack minus the leading `Error: message` line, indented. */
+function formatFullStack(stack: string): string {
+  const frames = stackFrames(stack);
+  return frames.length > 0 ? `\n${frames.map(frame => `    ${frame}`).join("\n")}` : "";
 }
 
 // Singleton instance

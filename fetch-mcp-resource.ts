@@ -21,6 +21,7 @@ import type { ContentBlock } from "./types.ts";
 import { listServerNames } from "./registry/registry-loader.ts";
 import { metaToServerEntry } from "./registry/registry-types.ts";
 import { guardMcpOutput, guardedMcpDetails, resolveMcpOutputGuardOptions } from "./mcp-output-guard.ts";
+import { authRequiredFailure, connectFailure, formatToolFailure, notFoundResult, serverNotFoundFailure } from "./errors.ts";
 import { throwIfAborted } from "./abort.ts";
 
 export interface FetchMcpResourceParams {
@@ -42,7 +43,12 @@ export async function executeFetchMcpResource(
   // --- Server resolution (REQ-W-010) -------------------------------------
   const server = state.registry.servers.get(params.server);
   if (!server) {
-    return notFound("server_not_found", `Server "${params.server}" not found.`, listServerNames(state.registry));
+    return notFoundResult(
+      "fetch",
+      "server_not_found",
+      serverNotFoundFailure("FetchMcpResource", params.server),
+      listServerNames(state.registry),
+    );
   }
 
   // --- Download path validation (REQ-W-012) ------------------------------
@@ -64,14 +70,14 @@ export async function executeFetchMcpResource(
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       return {
-        content: [{ type: "text", text: `Failed to connect to "${params.server}": ${message}` }],
+        content: [{ type: "text", text: connectFailure("FetchMcpResource", params.server, message) }],
         details: { mode: "fetch", error: "connect_failed", server: params.server, message },
       };
     }
   }
 
   if (connection.status === "needs-auth") {
-    const message = `Server "${params.server}" requires authentication. Phase 1 supports bearer tokens only (set them in registry/${params.server}/meta.json). OAuth is Phase 2.`;
+    const message = authRequiredFailure("FetchMcpResource", params.server);
     return {
       content: [{ type: "text", text: message }],
       details: { mode: "fetch", error: "auth_required", server: params.server, uri: params.uri, message },
@@ -91,8 +97,21 @@ export async function executeFetchMcpResource(
     }
     const message = error instanceof Error ? error.message : String(error);
     const guarded = await guardMcpOutput(
-      [{ type: "text" as const, text: message }],
-      { ...resolveMcpOutputGuardOptions(state.settings), prefix: "Failed to read resource: " },
+      [
+        {
+          type: "text" as const,
+          text: formatToolFailure({
+            action: "FetchMcpResource",
+            server: params.server,
+            what: `Could not read the resource: ${message}`,
+            hints: [
+              "Check that the URI is correct and the server exposes it.",
+              "Run `/mcp-bridge status` to check the server is healthy.",
+            ],
+          }),
+        },
+      ],
+      { ...resolveMcpOutputGuardOptions(state.settings) },
     );
     return {
       content: guarded.content,
@@ -121,7 +140,17 @@ export async function executeFetchMcpResource(
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       return {
-        content: [{ type: "text", text: `Failed to write to "${params.downloadPath}": ${message}` }],
+        content: [
+          {
+            type: "text",
+            text: formatToolFailure({
+              action: "FetchMcpResource",
+              server: params.server,
+              what: `Could not write to "${params.downloadPath}": ${message}`,
+              hints: ["Check the target directory is writable and the path is workspace-relative."],
+            }),
+          },
+        ],
         details: { mode: "fetch", error: "write_failed", server: params.server, uri: params.uri, message },
       };
     }
@@ -194,12 +223,4 @@ function collectText(contents: ResourceContents[]): string {
     .filter(b => b.type === "text")
     .map(b => (b as { text: string }).text)
     .join("\n");
-}
-
-function notFound(error: string, message: string, available: string[]): FetchMcpResourceResult {
-  const suffix = available.length > 0 ? ` Available: ${available.join(", ")}` : "";
-  return {
-    content: [{ type: "text", text: `${message}${suffix}` }],
-    details: { mode: "fetch", error, available },
-  };
 }

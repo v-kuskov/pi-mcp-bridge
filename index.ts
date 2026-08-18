@@ -85,7 +85,7 @@ export default function mcpBridge(pi: ExtensionAPI) {
     try {
       await current.lifecycle.gracefulShutdown();
     } catch (error) {
-      logger.error(`graceful shutdown failed (${reason})`, error instanceof Error ? error : undefined);
+      logger.error("graceful shutdown failed", error instanceof Error ? error : undefined, { reason });
     }
   }
 
@@ -415,7 +415,10 @@ export default function mcpBridge(pi: ExtensionAPI) {
             parsed.force,
           );
           if (!result.ok) {
-            notify(`Sync failed: ${result.error}`, "error");
+            const retry = (result.error ?? "").includes("/mcp-bridge")
+              ? ""
+              : ` — retry with \`/mcp-bridge sync ${parsed.serverName}\``;
+            notify(`Sync failed: ${result.error}${retry}`, "error");
             return;
           }
           if (result.skipped) {
@@ -554,7 +557,8 @@ export default function mcpBridge(pi: ExtensionAPI) {
             await state.manager.close(serverName);
           } catch (error) {
             logger.warn(
-              `close before remove "${serverName}" failed: ${error instanceof Error ? error.message : String(error)}`,
+              `close before remove failed: ${error instanceof Error ? error.message : String(error)}`,
+              { server: serverName },
             );
           }
           const result = doRemove(serverName);

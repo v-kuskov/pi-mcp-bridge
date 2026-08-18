@@ -78,7 +78,7 @@ export class McpLifecycleManager {
           logger.debug(`Reconnected to ${name}`);
           this.onReconnect?.(name);
         } catch (error) {
-          console.error(`MCP: Failed to reconnect to ${name}:`, error);
+          logger.error("failed to reconnect", error instanceof Error ? error : undefined, { server: name });
         }
       }
     }

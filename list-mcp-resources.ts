@@ -18,6 +18,7 @@ import type { McpResource } from "./types.ts";
 import type { McpBridgeState } from "./state.ts";
 import { listServerNames } from "./registry/registry-loader.ts";
 import { metaToServerEntry } from "./registry/registry-types.ts";
+import { authRequiredFailure, connectFailure, formatToolFailure, notFoundResult, serverNotFoundFailure } from "./errors.ts";
 import { logger } from "./logger.ts";
 import { throwIfAborted } from "./abort.ts";
 
@@ -38,7 +39,12 @@ export async function executeListMcpResources(
   // --- Server resolution ---
   const server = state.registry.servers.get(params.server);
   if (!server) {
-    return notFound("server_not_found", `Server "${params.server}" not found.`, listServerNames(state.registry));
+    return notFoundResult(
+      "list-resources",
+      "server_not_found",
+      serverNotFoundFailure("ListMcpResources", params.server),
+      listServerNames(state.registry),
+    );
   }
 
   // --- Lazy connect ---
@@ -49,14 +55,14 @@ export async function executeListMcpResources(
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       return {
-        content: [{ type: "text", text: `Failed to connect to "${params.server}": ${message}` }],
+        content: [{ type: "text", text: connectFailure("ListMcpResources", params.server, message) }],
         details: { mode: "list-resources", error: "connect_failed", server: params.server, message },
       };
     }
   }
 
   if (connection.status === "needs-auth") {
-    const message = `Server "${params.server}" requires authentication. Phase 1 supports bearer tokens only (set them in registry/${params.server}/meta.json). OAuth is Phase 2.`;
+    const message = authRequiredFailure("ListMcpResources", params.server);
     return {
       content: [{ type: "text", text: message }],
       details: { mode: "list-resources", error: "auth_required", server: params.server, message },
@@ -106,21 +112,23 @@ export async function executeListMcpResources(
     }
     const message = error instanceof Error ? error.message : String(error);
     return {
-      content: [{ type: "text", text: `Failed to list resources from "${params.server}": ${message}` }],
+      content: [
+        {
+          type: "text",
+          text: formatToolFailure({
+            action: "ListMcpResources",
+            server: params.server,
+            what: `Could not list resources: ${message}`,
+            hints: ["Run `/mcp-bridge status` to check the server is healthy."],
+          }),
+        },
+      ],
       details: { mode: "list-resources", error: "list_failed", server: params.server, message },
     };
   } finally {
     state.manager.decrementInFlight(params.server);
     state.manager.touch(params.server);
   }
-}
-
-function notFound(error: string, message: string, available: string[]): ListMcpResourcesResult {
-  const suffix = available.length > 0 ? ` Available: ${available.join(", ")}` : "";
-  return {
-    content: [{ type: "text", text: `${message}${suffix}` }],
-    details: { mode: "list-resources", error, available },
-  };
 }
 
 // Suppress unused-import warning for logger (kept for future diagnostic logging).
